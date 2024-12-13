@@ -130,3 +130,7 @@ tracker: botsort.yaml # (str) tracker type, choices=[botsort.yaml, bytetrack.yam
 label_format: labelme
 roi_info: [[]]
 roi_from_json: false
+output_dir: '/HDD/etc/outputs/ultralytics'
+debug_dir: '/HDD/etc/outputs/ultralytics/debug'
+weights_dir: '/HDD/etc/outputs/ultralytics/debug'
+val_dir: '/HDD/etc/outputs/ultralytics/debug'

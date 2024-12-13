@@ -1,7 +1,16 @@
-from ultralytics import YOLO
+from ultralytics import YOLO, RTDETR, settings
+from callbacks.aivdb import *
+settings.update({'wandb': False})
 
 
 model = YOLO("/HDD/weights/yolov11/yolo11n.pt")
+model.add_callback('on_train_start', on_train_start)
+model.add_callback('on_train_epoch_end', on_train_epoch_end)
+model.add_callback('on_fit_epoch_end', on_fit_epoch_end)
+model.add_callback('on_model_save', on_model_save)
+model.add_callback('on_train_end', on_train_end)
+
+
 train_results = model.train(
     data="coco128.yaml",  # path to dataset YAML
     epochs=100,  # number of training epochs
