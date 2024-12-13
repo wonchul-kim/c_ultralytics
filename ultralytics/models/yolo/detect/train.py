@@ -30,7 +30,8 @@ class DetectionTrainer(BaseTrainer):
         ```
     """
 
-    def build_dataset(self, img_path, mode="train", batch=None, label_format='labelme'):
+    def build_dataset(self, img_path, mode="train", batch=None, 
+                      label_format='labelme', roi_info=None, roi_from_json=False):
         """
         Build YOLO Dataset.
 
@@ -40,13 +41,16 @@ class DetectionTrainer(BaseTrainer):
             batch (int, optional): Size of batches, this is for `rect`. Defaults to None.
         """
         gs = max(int(de_parallel(self.model).stride.max() if self.model else 0), 32)
-        return build_yolo_dataset(self.args, img_path, batch, self.data, mode=mode, rect=mode == "val", stride=gs, label_format=label_format)
+        return build_yolo_dataset(self.args, img_path, batch, self.data, mode=mode, rect=mode == "val", stride=gs, 
+                                  label_format=label_format, roi_info=roi_info, roi_from_json=roi_from_json)
 
-    def get_dataloader(self, dataset_path, batch_size=16, rank=0, mode="train", label_format='labelme'):
+    def get_dataloader(self, dataset_path, batch_size=16, rank=0, mode="train", 
+                       label_format='labelme', roi_info=None, roi_from_json=False):
         """Construct and return dataloader."""
         assert mode in {"train", "val"}, f"Mode must be 'train' or 'val', not {mode}."
         with torch_distributed_zero_first(rank):  # init dataset *.cache only once if DDP
-            dataset = self.build_dataset(dataset_path, mode, batch_size, label_format=label_format)
+            dataset = self.build_dataset(dataset_path, mode, batch_size, 
+                                         label_format=label_format, roi_info=roi_info, roi_from_json=roi_from_json)
         shuffle = mode == "train"
         if getattr(dataset, "rect", False) and shuffle:
             LOGGER.warning("WARNING ⚠️ 'rect=True' is incompatible with DataLoader shuffle, setting shuffle=False")

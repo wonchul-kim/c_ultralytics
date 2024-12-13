@@ -63,10 +63,8 @@ class YOLODataset(BaseDataset):
         self.use_obb = task == "obb"
         self.data = data
         self.label_format = kwargs['label_format']
-        # self.roi_info = kwargs['roi_info']
-        # self.roi_from_json = kwargs['roi_from_json']
-        self.roi_info = [[0, 0, 2048, 2448]]
-        self.roi_from_json = False
+        self.roi_info = kwargs['roi_info']
+        self.roi_from_json = kwargs['roi_from_json']
         
         assert not (self.use_segments and self.use_keypoints), "Can not use both segments and keypoints."
         super().__init__(*args, **kwargs)
@@ -106,10 +104,10 @@ class YOLODataset(BaseDataset):
                             total=len(self.im_files),
                         )
                     )
-                    # print(">>>>>>>>>>>>>> ", _roi, len(self.im_files), len(self.label_files))
-                    # for _img_files, _label_files, _prefix, _class2label, __roi, _roi_from_json in zip(self.im_files, self.label_files, repeat(self.prefix), repeat(class2label), repeat(_roi), repeat(False)):
-                    #     args = (_img_files, _label_files, _prefix, _class2label, __roi, _roi_from_json)
-                    #     __labels = verify_labelme(args)
+                    print(">>>>>>>>>>>>>> ", _roi, len(self.im_files), len(self.label_files))
+                    for _img_files, _label_files, _prefix, _class2label, __roi, _roi_from_json in zip(self.im_files, self.label_files, repeat(self.prefix), repeat(class2label), repeat(_roi), repeat(False)):
+                        args = (_img_files, _label_files, _prefix, _class2label, __roi, _roi_from_json)
+                        __labels = verify_labelme(args)
             else:
                 desc = f"{self.prefix}Scanning '{path.parent / path.stem}' images and labels..."
                 pbar_list.append(
