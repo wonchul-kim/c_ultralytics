@@ -152,6 +152,9 @@ class BaseDataset(Dataset):
     def load_image(self, i, rect_mode=True):
         """Loads 1 image from dataset index 'i', returns (im, resized hw)."""
         im, f, fn = self.ims[i], self.im_files[i], self.npy_files[i]
+        roi = None
+        if 'roi' in self.labels[i] and len(self.labels[i]['roi']) != 0:
+            roi = self.labels[i]['roi']
         if im is None:  # not cached in RAM
             if fn.exists():  # load npy
                 try:
@@ -164,6 +167,9 @@ class BaseDataset(Dataset):
                 im = cv2.imread(f)  # BGR
             if im is None:
                 raise FileNotFoundError(f"Image Not Found {f}")
+
+            if roi is not None:
+                im = im[roi[1] : roi[3], roi[0] : roi[2], :]
 
             h0, w0 = im.shape[:2]  # orig hw
             if rect_mode:  # resize long side to imgsz while maintaining aspect ratio
@@ -186,6 +192,7 @@ class BaseDataset(Dataset):
             return im, (h0, w0), im.shape[:2]
 
         return self.ims[i], self.im_hw0[i], self.im_hw[i]
+
 
     def cache_images(self):
         """Cache images to memory or disk."""

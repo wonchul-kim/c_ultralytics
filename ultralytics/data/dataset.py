@@ -65,7 +65,7 @@ class YOLODataset(BaseDataset):
         self.label_format = kwargs['label_format']
         # self.roi_info = kwargs['roi_info']
         # self.roi_from_json = kwargs['roi_from_json']
-        self.roi_info = [[0, 0, 512, 512], [200, 200, 712, 712]]
+        self.roi_info = [[0, 0, 2048, 2448]]
         self.roi_from_json = False
         
         assert not (self.use_segments and self.use_keypoints), "Can not use both segments and keypoints."
@@ -106,10 +106,10 @@ class YOLODataset(BaseDataset):
                             total=len(self.im_files),
                         )
                     )
-                    # print(">>>>>>>>>>>>>> ", _roi, len(self.img_files), len(self.label_files))
-                    # for _img_files, _label_files, _prefix, _class2label, __roi in zip(self.img_files, self.label_files, repeat(prefix), repeat(class2label), repeat(_roi)):
-                    #     args = (_img_files, _label_files, _prefix, _class2label, __roi)
-                    #     verify_labelme(args)
+                    # print(">>>>>>>>>>>>>> ", _roi, len(self.im_files), len(self.label_files))
+                    # for _img_files, _label_files, _prefix, _class2label, __roi, _roi_from_json in zip(self.im_files, self.label_files, repeat(self.prefix), repeat(class2label), repeat(_roi), repeat(False)):
+                    #     args = (_img_files, _label_files, _prefix, _class2label, __roi, _roi_from_json)
+                    #     __labels = verify_labelme(args)
             else:
                 desc = f"{self.prefix}Scanning '{path.parent / path.stem}' images and labels..."
                 pbar_list.append(
@@ -132,41 +132,8 @@ class YOLODataset(BaseDataset):
                 
             cnt = 0
             for pbar in pbar_list:
-                for (
-                    im_file_list,
-                    l_list,
-                    shape_list,
-                    roi_list,
-                    segments_list,
-                    nm_list,
-                    nf_list,
-                    ne_list,
-                    nc_list,
-                    msg_list,
-                ) in pbar:
-                    for (
-                        im_file,
-                        l,
-                        shape,
-                        __roi,
-                        segments,
-                        nm_f,
-                        nf_f,
-                        ne_f,
-                        nc_f,
-                        msg,
-                    ) in zip(
-                        im_file_list,
-                        l_list,
-                        shape_list,
-                        roi_list,
-                        segments_list,
-                        nm_list,
-                        nf_list,
-                        ne_list,
-                        nc_list,
-                        msg_list,
-                    ):
+                for (im_file_list, l_list, shape_list, roi_list, segments_list, nm_list, nf_list, ne_list, nc_list, msg_list) in pbar:
+                    for (im_file, l, shape, __roi, segments, nm_f, nf_f, ne_f, nc_f, msg) in zip(im_file_list, l_list, shape_list, roi_list, segments_list, nm_list, nf_list, ne_list, nc_list, msg_list):
                         nm += nm_f
                         nf += nf_f
                         ne += ne_f
@@ -175,14 +142,15 @@ class YOLODataset(BaseDataset):
                             cnt += 1
                             # x[im_file + "_{}".format(cnt)] = [l, shape, __roi, segments]
                             x['labels'].append({
-                                "im_file": im_file + "_{}".format(cnt),
+                                "im_file": im_file,
                                 "shape": shape,
                                 "cls": l[:, 0:1],  # n, 1
                                 "bboxes": l[:, 1:],  # n, 4
                                 "segments": segments,
-                                "keypoints": [],
+                                "keypoints": None, 
                                 "normalized": True,
                                 "bbox_format": "xywh",
+                                "roi": __roi,
                             })
                         if msg:
                             msgs.append(msg)

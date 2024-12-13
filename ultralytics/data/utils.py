@@ -14,7 +14,7 @@ from tarfile import is_tarfile
 import cv2
 import numpy as np
 from PIL import Image, ImageOps
-
+import os.path as osp
 from ultralytics.nn.autobackend import check_class_names
 from ultralytics.utils import (
     DATASETS_DIR,
@@ -32,7 +32,7 @@ from ultralytics.utils import (
 )
 from ultralytics.utils.checks import check_file, check_font, is_ascii
 from ultralytics.utils.downloads import download, safe_download, unzip_file
-from ultralytics.utils.ops import segments2boxes, xyxy2xywh
+from ultralytics.utils.ops import segments2boxes
 
 HELP_URL = "See https://docs.ultralytics.com/datasets for dataset formatting guidance."
 IMG_FORMATS = {"bmp", "dng", "jpeg", "jpg", "mpo", "png", "tif", "tiff", "webp", "pfm", "heic"}  # image suffixes
@@ -173,6 +173,47 @@ def verify_image_label(args):
         return [None, None, None, None, None, nm, nf, ne, nc, msg]
 
 def verify_labelme(args):
+    def xyxy2xywh(imgsz, xyxy):
+
+        if not len(imgsz) >= 2:
+            raise RuntimeError(
+                f"imgsz should be [height, width, channel] or [height, width]"
+            )
+        elif imgsz[0] <= 3:
+            raise RuntimeError(
+                f"imgsz should be [height, width, channel] or [height, width]"
+            )
+
+        if isinstance(xyxy, list):
+            x1, y1, x2, y2 = xyxy[0], xyxy[1], xyxy[2], xyxy[3]
+        else:
+            raise RuntimeError(f"xyxy must be list such as [x1, y1, x2, y2]")
+
+        def sorting(l1, l2):
+            if l1 > l2:
+                lmax, lmin = l1, l2
+                return lmax, lmin
+            else:
+                lmax, lmin = l2, l1
+                return lmax, lmin
+
+        xmax, xmin = sorting(x1, x2)
+        ymax, ymin = sorting(y1, y2)
+
+        dw = 1.0 / imgsz[1]
+        dh = 1.0 / imgsz[0]
+
+        x = (xmin + xmax) / 2.0
+        y = (ymin + ymax) / 2.0
+        w = xmax - xmin
+        h = ymax - ymin
+
+        x = x * dw
+        w = w * dw
+        y = y * dh
+        h = h * dh
+
+        return [x, y, w, h]
     im_file, lb_file, prefix, class2label, roi, roi_from_json = args
     nm, nf, ne, nc, msg, segments = (
         0,
@@ -203,20 +244,8 @@ def verify_labelme(args):
                 if roi_from_json and "rois" in _json.keys() and len(_json["rois"]) != 0:
                     rois = _json["rois"]
 
-        (
-            im_file_list,
-            l_list,
-            shape_list,
-            roi_list,
-            segments_list,
-            nm_list,
-            nf_list,
-            ne_list,
-            nc_list,
-            msg_list,
-        ) = ([], [], [], [], [], [], [], [], [], [])
+        (im_file_list, l_list, shape_list, roi_list, segments_list, nm_list, nf_list, ne_list, nc_list, msg_list) = ([], [], [], [], [], [], [], [], [], [])
         for roi in rois:
-
             if roi is not None:
                 shape = (roi[2] - roi[0], roi[3] - roi[1])
             else:
