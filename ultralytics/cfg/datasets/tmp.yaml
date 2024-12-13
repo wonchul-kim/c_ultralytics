@@ -1,9 +1,0 @@
-path: /DeepLearning/_athena_tests/datasets/rectangle1/split_dataset_unit
-train: train
-val: val
-
-names:
-  0: NUMBER_OK
-  1: NUMBER_NG
-  2: LOT_OK 
-  3: LOT_NG

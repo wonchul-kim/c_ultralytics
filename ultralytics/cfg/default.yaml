@@ -128,5 +128,5 @@ tracker: botsort.yaml # (str) tracker type, choices=[botsort.yaml, bytetrack.yam
 
 ### etc.
 label_format: labelme
-roi_info: [[0, 0, 2448, 2048]]
+roi_info: [[]]
 roi_from_json: false

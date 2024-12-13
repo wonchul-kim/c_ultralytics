@@ -555,7 +555,7 @@ class BaseTrainer:
         try:
             if self.args.task == "classify":
                 data = check_cls_dataset(self.args.data)
-            elif self.args.data.split(".")[-1] in {"yaml", "yml"} or self.args.task in {
+            elif True if isinstance(self.args.data, dict) else self.args.data.split(".")[-1] in {"yaml", "yml"} or self.args.task in {
                 "detect",
                 "segment",
                 "pose",

@@ -530,17 +530,20 @@ def check_det_dataset(dataset, autodownload=True):
     Returns:
         (dict): Parsed dataset information and paths.
     """
-    file = check_file(dataset)
+    if isinstance(dataset, dict):
+        data = dataset
+    else:
+        file = check_file(dataset)
 
-    # Download (optional)
-    extract_dir = ""
-    if zipfile.is_zipfile(file) or is_tarfile(file):
-        new_dir = safe_download(file, dir=DATASETS_DIR, unzip=True, delete=False)
-        file = find_dataset_yaml(DATASETS_DIR / new_dir)
-        extract_dir, autodownload = file.parent, False
+        # Download (optional)
+        extract_dir = ""
+        if zipfile.is_zipfile(file) or is_tarfile(file):
+            new_dir = safe_download(file, dir=DATASETS_DIR, unzip=True, delete=False)
+            file = find_dataset_yaml(DATASETS_DIR / new_dir)
+            extract_dir, autodownload = file.parent, False
 
-    # Read YAML
-    data = yaml_load(file, append_filename=True)  # dictionary
+        # Read YAML
+        data = yaml_load(file, append_filename=True)  # dictionary
 
     # Checks
     for k in "train", "val":
@@ -562,14 +565,17 @@ def check_det_dataset(dataset, autodownload=True):
 
     data["names"] = check_class_names(data["names"])
 
-    # Resolve paths
-    path = Path(extract_dir or data.get("path") or Path(data.get("yaml_file", "")).parent)  # dataset root
-    if not path.is_absolute():
-        path = (DATASETS_DIR / path).resolve()
+    if not isinstance(dataset, dict):
+        # Resolve paths
+        path = Path(extract_dir or data.get("path") or Path(data.get("yaml_file", "")).parent)  # dataset root
+        if not path.is_absolute():
+            path = (DATASETS_DIR / path).resolve()
 
-    # Set paths
-    data["path"] = path  # download scripts
+        # Set paths
+        data["path"] = path  # download scripts
+        
     for k in "train", "val", "test", "minival":
+        path = Path(data['path'])
         if data.get(k):  # prepend path
             if isinstance(data[k], str):
                 x = (path / data[k]).resolve()
