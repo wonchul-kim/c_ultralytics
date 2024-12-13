@@ -1,0 +1,7 @@
+path: /HDD/datasets/projects/Tenneco/Metalbearing/warp/split_dataset_
+train: train
+val: val
+
+names:
+  0: timber
+  1: screw
