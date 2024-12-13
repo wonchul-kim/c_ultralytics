@@ -5,6 +5,7 @@ from collections import defaultdict
 from itertools import repeat
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
+from tqdm import tqdm
 
 import cv2
 import numpy as np
@@ -36,6 +37,7 @@ from .utils import (
     save_dataset_cache_file,
     verify_image,
     verify_image_label,
+    verify_labelme,
 )
 
 # Ultralytics dataset *.cache version, >= 1.0.0 for YOLOv8
@@ -60,9 +62,153 @@ class YOLODataset(BaseDataset):
         self.use_keypoints = task == "pose"
         self.use_obb = task == "obb"
         self.data = data
+        self.label_format = kwargs['label_format']
+        # self.roi_info = kwargs['roi_info']
+        # self.roi_from_json = kwargs['roi_from_json']
+        self.roi_info = [[0, 0, 512, 512], [200, 200, 712, 712]]
+        self.roi_from_json = False
+        
         assert not (self.use_segments and self.use_keypoints), "Can not use both segments and keypoints."
         super().__init__(*args, **kwargs)
 
+
+    def cache_labels_labelme(self, path=Path("./labels.cache")):
+        # Cache dataset labels, check images and read shapes
+        x = {'labels': []}  # dict
+        nm, nf, ne, nc, msgs = (
+            0,
+            0,
+            0,
+            0,
+            [],
+        )  # number missing, found, empty, corrupt, messages
+        with ThreadPool(NUM_THREADS) as pool:
+            pbar_list = []
+            class2label = {val: key for key, val in self.data['names'].items()}
+
+            if self.roi_info is not None:
+                for _roi in self.roi_info:
+                    desc = f"Scanning '{path.parent / path.stem} for {_roi}' images and labels..."
+                    pbar_list.append(
+                        tqdm(
+                            pool.imap(
+                                verify_labelme,
+                                zip(
+                                    self.im_files,
+                                    self.label_files,
+                                    repeat(self.prefix),
+                                    repeat(class2label),
+                                    repeat(_roi),
+                                    repeat(None),
+                                ),
+                            ),
+                            desc=desc,
+                            total=len(self.im_files),
+                        )
+                    )
+                    # print(">>>>>>>>>>>>>> ", _roi, len(self.img_files), len(self.label_files))
+                    # for _img_files, _label_files, _prefix, _class2label, __roi in zip(self.img_files, self.label_files, repeat(prefix), repeat(class2label), repeat(_roi)):
+                    #     args = (_img_files, _label_files, _prefix, _class2label, __roi)
+                    #     verify_labelme(args)
+            else:
+                desc = f"{self.prefix}Scanning '{path.parent / path.stem}' images and labels..."
+                pbar_list.append(
+                    tqdm(
+                        pool.imap(
+                            verify_labelme,
+                            zip(
+                                self.im_files,
+                                self.label_files,
+                                repeat(self.prefix),
+                                repeat(class2label),
+                                repeat(None),
+                                repeat(self.roi_from_json),
+                            ),
+                        ),
+                        desc=desc,
+                        total=len(self.im_files),
+                    )
+                )
+                
+            cnt = 0
+            for pbar in pbar_list:
+                for (
+                    im_file_list,
+                    l_list,
+                    shape_list,
+                    roi_list,
+                    segments_list,
+                    nm_list,
+                    nf_list,
+                    ne_list,
+                    nc_list,
+                    msg_list,
+                ) in pbar:
+                    for (
+                        im_file,
+                        l,
+                        shape,
+                        __roi,
+                        segments,
+                        nm_f,
+                        nf_f,
+                        ne_f,
+                        nc_f,
+                        msg,
+                    ) in zip(
+                        im_file_list,
+                        l_list,
+                        shape_list,
+                        roi_list,
+                        segments_list,
+                        nm_list,
+                        nf_list,
+                        ne_list,
+                        nc_list,
+                        msg_list,
+                    ):
+                        nm += nm_f
+                        nf += nf_f
+                        ne += ne_f
+                        nc += nc_f
+                        if im_file:
+                            cnt += 1
+                            # x[im_file + "_{}".format(cnt)] = [l, shape, __roi, segments]
+                            x['labels'].append({
+                                "im_file": im_file + "_{}".format(cnt),
+                                "shape": shape,
+                                "cls": l[:, 0:1],  # n, 1
+                                "bboxes": l[:, 1:],  # n, 4
+                                "segments": segments,
+                                "keypoints": [],
+                                "normalized": True,
+                                "bbox_format": "xywh",
+                            })
+                        if msg:
+                            msgs.append(msg)
+                    pbar.desc = (
+                        f"{desc}{nf} found, {nm} missing, {ne} empty, {nc} corrupted"
+                    )
+                pbar.close()
+
+        if msgs:
+            LOGGER.info("\n".join(msgs))
+        if nf == 0:
+            LOGGER.warning(f"{self.prefix}WARNING: No labels found in {path}.")
+        x["hash"] = get_hash(self.label_files + self.im_files)
+        x["results"] = nf, nm, ne, nc, len(self.im_files)
+        x["msgs"] = msgs  # warnings
+        save_dataset_cache_file(self.prefix, path, x, DATASET_CACHE_VERSION)
+        try:
+            np.save(path, x)  # save cache for next time
+            path.with_suffix(".cache.npy").rename(path)  # remove .npy suffix
+            LOGGER.info(f"{self.prefix}New cache created: {path}")
+        except Exception as e:
+            LOGGER.warning(
+                f"{self.prefix}WARNING: Cache directory {path.parent} is not writeable: {e}"
+            )  # not writeable
+        return x
+    
     def cache_labels(self, path=Path("./labels.cache")):
         """
         Cache dataset labels, check images and read shapes.
@@ -83,6 +229,7 @@ class YOLODataset(BaseDataset):
                 "'kpt_shape' in data.yaml missing or incorrect. Should be a list with [number of "
                 "keypoints, number of dims (2 for x,y or 3 for x,y,visible)], i.e. 'kpt_shape: [17, 3]'"
             )
+            
         with ThreadPool(NUM_THREADS) as pool:
             results = pool.imap(
                 func=verify_image_label,
@@ -134,12 +281,24 @@ class YOLODataset(BaseDataset):
         """Returns dictionary of labels for YOLO training."""
         self.label_files = img2label_paths(self.im_files)
         cache_path = Path(self.label_files[0]).parent.with_suffix(".cache")
-        try:
-            cache, exists = load_dataset_cache_file(cache_path), True  # attempt to load a *.cache file
-            assert cache["version"] == DATASET_CACHE_VERSION  # matches current version
-            assert cache["hash"] == get_hash(self.label_files + self.im_files)  # identical hash
-        except (FileNotFoundError, AssertionError, AttributeError):
+        # try:
+        #     cache, exists = load_dataset_cache_file(cache_path), True  # attempt to load a *.cache file
+        #     assert cache["version"] == DATASET_CACHE_VERSION  # matches current version
+        #     assert cache["hash"] == get_hash(self.label_files + self.im_files)  # identical hash
+        # except (FileNotFoundError, AssertionError, AttributeError):
+        #     if self.label_format == 'yolo':
+        #         cache, exists = self.cache_labels(cache_path), False  # run cache ops
+        #     elif self.label_format == 'labelme':
+        #         cache, exists = self.cache_labels_labelme(cache_path), False  # run cache ops
+        #     else:
+        #         raise NotImplementedError(f'There is no such cache_labels for {self.label_format}')
+
+        if self.label_format == 'yolo':
             cache, exists = self.cache_labels(cache_path), False  # run cache ops
+        elif self.label_format == 'labelme':
+            cache, exists = self.cache_labels_labelme(cache_path), False  # run cache ops
+        else:
+            raise NotImplementedError(f'There is no such cache_labels for {self.label_format}')
 
         # Display cache
         nf, nm, ne, nc, n = cache.pop("results")  # found, missing, empty, corrupt, total
