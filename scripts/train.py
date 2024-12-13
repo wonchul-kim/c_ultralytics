@@ -12,7 +12,7 @@ model.add_callback('on_train_end', on_train_end)
 
 
 train_results = model.train(
-    data="coco128.yaml",  # path to dataset YAML
+    data="coco8.yaml",  # path to dataset YAML
     epochs=100,  # number of training epochs
     imgsz=80,  # training image size
     device="0",  # device to run on, i.e. device=0 or device=0,1,2,3 or device=cpu
