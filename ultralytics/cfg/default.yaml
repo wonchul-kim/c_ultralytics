@@ -127,7 +127,7 @@ tracker: botsort.yaml # (str) tracker type, choices=[botsort.yaml, bytetrack.yam
 
 
 ### etc.
-label_format: labelme
+label_format: yolo
 roi_info: [[]]
 roi_from_json: false
 output_dir: '/HDD/etc/outputs/ultralytics'

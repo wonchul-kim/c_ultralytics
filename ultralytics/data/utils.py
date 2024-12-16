@@ -42,15 +42,15 @@ FORMATS_HELP_MSG = f"Supported formats are:\nimages: {IMG_FORMATS}\nvideos: {VID
 
 
 def img2label_paths(img_paths, label_format='labelme'):
-    if label_format == 'yolo':
-        """Define label paths as a function of image paths."""
-        sa, sb = f"{os.sep}images{os.sep}", f"{os.sep}labels{os.sep}"  # /images/, /labels/ substrings
-        return [sb.join(x.rsplit(sa, 1)).rsplit(".", 1)[0] + ".txt" for x in img_paths]
-    elif label_format == 'labelme':
-        sa, sb = f"{os.sep}images{os.sep}", f"{os.sep}labels{os.sep}"  # /images/, /labels/ substrings
-        return [sb.join(x.rsplit(sa, 1)).rsplit(".", 1)[0] + ".json" for x in img_paths]
-    else:
-        raise NotImplementedError(f"There is no such label_format({label_format}) considered")
+    # if label_format == 'yolo':
+    """Define label paths as a function of image paths."""
+    sa, sb = f"{os.sep}images{os.sep}", f"{os.sep}labels{os.sep}"  # /images/, /labels/ substrings
+    return [sb.join(x.rsplit(sa, 1)).rsplit(".", 1)[0] + ".txt" for x in img_paths]
+    # elif label_format == 'labelme':
+    #     sa, sb = f"{os.sep}images{os.sep}", f"{os.sep}labels{os.sep}"  # /images/, /labels/ substrings
+    #     return [sb.join(x.rsplit(sa, 1)).rsplit(".", 1)[0] + ".json" for x in img_paths]
+    # else:
+    #     raise NotImplementedError(f"There is no such label_format({label_format}) considered")
 
 
 def get_hash(paths):
