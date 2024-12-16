@@ -164,7 +164,7 @@ class YOLODataset(BaseDataset):
         x["hash"] = get_hash(self.label_files + self.im_files)
         x["results"] = nf, nm, ne, nc, len(self.im_files)
         x["msgs"] = msgs  # warnings
-        save_dataset_cache_file(self.prefix, path, x, DATASET_CACHE_VERSION)
+        # save_dataset_cache_file(self.prefix, path, x, DATASET_CACHE_VERSION)
         try:
             np.save(path, x)  # save cache for next time
             path.with_suffix(".cache.npy").rename(path)  # remove .npy suffix
@@ -240,12 +240,12 @@ class YOLODataset(BaseDataset):
         x["hash"] = get_hash(self.label_files + self.im_files)
         x["results"] = nf, nm, ne, nc, len(self.im_files)
         x["msgs"] = msgs  # warnings
-        save_dataset_cache_file(self.prefix, path, x, DATASET_CACHE_VERSION)
+        # save_dataset_cache_file(self.prefix, path, x, DATASET_CACHE_VERSION)
         return x
 
     def get_labels(self):
         """Returns dictionary of labels for YOLO training."""
-        self.label_files = img2label_paths(self.im_files)
+        self.label_files = img2label_paths(self.im_files, label_format=self.label_format)
         cache_path = Path(self.label_files[0]).parent.with_suffix(".cache")
         # try:
         #     cache, exists = load_dataset_cache_file(cache_path), True  # attempt to load a *.cache file
@@ -275,7 +275,8 @@ class YOLODataset(BaseDataset):
                 LOGGER.info("\n".join(cache["msgs"]))  # display warnings
 
         # Read cache
-        [cache.pop(k) for k in ("hash", "version", "msgs")]  # remove items
+        [cache.pop(k) for k in ("hash", "msgs")]  # remove items
+        # [cache.pop(k) for k in ("hash", "version", "msgs")]  # remove items
         labels = cache["labels"]
         if not labels:
             LOGGER.warning(f"WARNING ⚠️ No images found in {cache_path}, training may not work correctly. {HELP_URL}")
@@ -639,5 +640,5 @@ class ClassificationDataset:
             x["hash"] = get_hash([x[0] for x in self.samples])
             x["results"] = nf, nc, len(samples), samples
             x["msgs"] = msgs  # warnings
-            save_dataset_cache_file(self.prefix, path, x, DATASET_CACHE_VERSION)
+            # save_dataset_cache_file(self.prefix, path, x, DATASET_CACHE_VERSION)
             return samples
