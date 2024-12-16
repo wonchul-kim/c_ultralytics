@@ -90,7 +90,7 @@ class BaseTrainer:
         csv (Path): Path to results CSV file.
     """
 
-    def __init__(self, cfg=DEFAULT_CFG, overrides=None, _callbacks=None):
+    def __init__(self, cfg=DEFAULT_CFG, overrides=None, _callbacks=None, external=None):
         """
         Initializes the BaseTrainer class.
 
@@ -104,6 +104,7 @@ class BaseTrainer:
         self.validator = None
         self.metrics = None
         self.plots = {}
+        self.external = external
         init_seeds(self.args.seed + 1 + RANK, deterministic=self.args.deterministic)
 
         # Dirs
